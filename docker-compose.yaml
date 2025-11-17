@@ -35,15 +35,19 @@ services:
       - .env
     environment:
       DB_HOST: postgres
-      HOST: 0.0.0.0
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      HOST: 0.0.0.0
     networks:
       - traefik_public
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:${PORT:-8080}/api-docs/openapi.json || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -f http://localhost:${PORT:-8080}/api-docs/openapi.json || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -56,11 +60,25 @@ services:
           memory: 128M
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.openstreetlifting.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.openstreetlifting.tls=true"
-      - "traefik.http.routers.openstreetlifting.entrypoints=web,websecure"
-      - "traefik.http.routers.openstreetlifting.tls.certresolver=letsencrypt"
-      - "traefik.http.services.openstreetlifting.loadbalancer.server.port=${PORT}"
+      - "traefik.http.routers.openstreetlifting-backend.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.openstreetlifting-backend.tls=true"
+      - "traefik.http.routers.openstreetlifting-backend.entrypoints=web,websecure"
+      - "traefik.http.routers.openstreetlifting-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.openstreetlifting-backend.loadbalancer.server.port=${PORT}"
+
+  frontend:
+    image: dirdros/openstreetlifting-frontend:${FRONTEND_VERSION:-latest}
+    container_name: openstreetlifting_frontend
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.openstreetlifting-frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.openstreetlifting-frontend.tls=true"
+      - "traefik.http.routers.openstreetlifting-frontend.entrypoints=web,websecure"
+      - "traefik.http.routers.openstreetlifting-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.openstreetlifting-frontend.loadbalancer.server.port=${FRONTEND_PORT}"
+
+    restart: unless-stopped
 volumes:
   postgres_data:
 
